@@ -48,13 +48,13 @@ public class AzureOpenAITest {
                 .build();
         client = AzureOpenAISteamClient.builder()
                 //支持多key传入，请求时候随机选择
-                .apiKey(Arrays.asList("14c7681442f4493da9a40b57ec3c5d5b"))
+                .apiKey(Arrays.asList("14c768144*******3c5d5b"))
                 //自定义key的获取策略：默认KeyRandomStrategy
                 //.keyStrategy(new KeyRandomStrategy())
                 .keyStrategy(new FirstKeyStrategy())
                 .okHttpClient(okHttpClient)
                 //自己做了代理就传代理地址，没有可不不传,(关注公众号回复：openai ，获取免费的测试代理地址)
-                .apiHost("https://azure-openai-alight.openai.azure.com/")
+                .apiHost("https://azure-openai.openai.azure.com/")
                 .build();
     }
 
@@ -71,7 +71,7 @@ public class AzureOpenAITest {
                 .messages(Arrays.asList(message))
                 .stream(true)
                 .build();
-        client.streamChatCompletion(chatCompletion, eventSourceListener, "openai/deployments/AI35/chat/completions?api-version=2023-03-15-preview");
+        client.streamChatCompletion(chatCompletion, eventSourceListener, "openai/deployments/[ModelName]/chat/completions?api-version=2023-03-15-preview");
         CountDownLatch countDownLatch = new CountDownLatch(1);
         try {
             countDownLatch.await();
@@ -92,7 +92,7 @@ public class AzureOpenAITest {
                 .maxTokens(2048)
                 .stream(true)
                 .build();
-        client.streamCompletions(completion, eventSourceListener, "openai/deployments/Davinci003/completions?api-version=2022-12-01");
+        client.streamCompletions(completion, eventSourceListener, "openai/deployments/[ModelName]/completions?api-version=2022-12-01");
         CountDownLatch countDownLatch = new CountDownLatch(1);
         try {
             countDownLatch.await();

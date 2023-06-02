@@ -58,7 +58,7 @@ OpenAi官方文档地址：https://platform.openai.com/docs/api-reference
 <dependency>
     <groupId>com.tect</groupId>
     <artifactId>chatgpt-java-main</artifactId>
-    <version>1.0.8</version>
+    <version>1.0.13</version>
 </dependency>
 ```
 ## 2、流式客户端使用示例：
