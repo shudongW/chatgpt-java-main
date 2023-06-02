@@ -188,17 +188,12 @@ public class Test {
 ## 方式二（下载源码直接运行）
 
 ### **OpenAI全部接口支持调用**
-完整测试案例参考：com.unfbx.chatgpt.OpenAiClientTest 和 com.unfbx.chatgpt.OpenAiStreamClientTest
+完整测试案例参考：
+com.tech.chatgpt.OpenAiClientTest 
+com.tech.chatgpt.OpenAiStreamClientTest
 
---- 
-注意：由于这个接口：
-
-https://platform.openai.com/docs/api-reference/files/retrieve-content
-
-**免费用户无法使用，所以并未经过测试！！！**（哪位朋友有收费版keys也可以提供下）
-
-**完整测试案例参考源码中的：com.unfbx.chatgpt.OpenAiClientTest**和
-**com.unfbx.chatgpt.OpenAiStreamClientTest**
+### **Azure OpenAI全部接口支持调用**
+com.tech.chatgpt.AzureOpenAITest.java
 
 # Star History
 
