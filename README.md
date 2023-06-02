@@ -38,6 +38,8 @@ Q | A
 如何整合SpringBoot实现流式输出的Api接口？ | 参考另外一个项目：[chatgpt-steam-server](https://github.com/shudongW/chatgpt-steam-server)
 最新版GPT-3.5-TURBO是否支持？ |参考测试案例：[OpenAiStreamClientTest](https://github.com/shudongW/chatgpt-java-main/blob/main/src/test/java/com/tech/chatgpt/OpenAiStreamClientTest.java) 
 最新版语言转文字和语言翻译是否支持？ | 已经支持whisper参考测试案例：[OpenAiStreamClientTest](https://github.com/shudongW/chatgpt-java-main/blob/main/src/test/java/com/tech/chatgpt/OpenAiStreamClientTest.java) 
+最新版Azure OpenAI是否支持？ |参考测试案例：[AzureOpenAITest](https://github.com/shudongW/chatgpt-java-main/blob/main/src/test/java/com/tech/chatgpt/AzureOpenAITest.java) 
+
 ---
 # 工程简介
 
