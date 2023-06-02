@@ -4,7 +4,9 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
 
 import com.tech.chatgpt.constant.OpenAIConst;
+import com.tech.chatgpt.entity.billing.BillingUsage;
 import com.tech.chatgpt.entity.billing.CreditGrantsResponse;
+import com.tech.chatgpt.entity.billing.Subscription;
 import com.tech.chatgpt.entity.chat.ChatCompletion;
 import com.tech.chatgpt.entity.chat.ChatCompletionResponse;
 import com.tech.chatgpt.entity.chat.Message;
@@ -21,16 +23,20 @@ import com.tech.chatgpt.entity.files.File;
 import com.tech.chatgpt.entity.files.UploadFileResponse;
 import com.tech.chatgpt.entity.fineTune.Event;
 import com.tech.chatgpt.entity.fineTune.FineTune;
+import com.tech.chatgpt.entity.fineTune.FineTuneDeleteResponse;
 import com.tech.chatgpt.entity.fineTune.FineTuneResponse;
 import com.tech.chatgpt.entity.images.*;
 import com.tech.chatgpt.entity.models.Model;
 import com.tech.chatgpt.entity.models.ModelResponse;
 import com.tech.chatgpt.entity.moderations.Moderation;
 import com.tech.chatgpt.entity.moderations.ModerationResponse;
-import com.tech.chatgpt.entity.whisper.Whisper;
+import com.tech.chatgpt.entity.whisper.Transcriptions;
+import com.tech.chatgpt.entity.whisper.Translations;
 import com.tech.chatgpt.entity.whisper.WhisperResponse;
 import com.tech.chatgpt.exception.BaseException;
 import com.tech.chatgpt.exception.CommonError;
+import com.tech.chatgpt.function.KeyRandomStrategy;
+import com.tech.chatgpt.function.KeyStrategyFunction;
 import com.tech.chatgpt.interceptor.HeaderAuthorizationInterceptor;
 import com.tech.chatgpt.interceptor.OpenAiResponseInterceptor;
 import io.reactivex.Single;
@@ -42,7 +48,7 @@ import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
-import java.net.Proxy;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -74,6 +80,11 @@ public class OpenAiClient {
      */
     @Getter
     private OkHttpClient okHttpClient;
+    /**
+     * api key的获取策略
+     */
+    @Getter
+    private KeyStrategyFunction<List<String>, String> keyStrategy;
 
     /**
      * 构造器
@@ -100,13 +111,19 @@ public class OpenAiClient {
         }
         apiHost = builder.apiHost;
 
+        if (Objects.isNull(builder.keyStrategy)) {
+            builder.keyStrategy = new KeyRandomStrategy();
+        }
+        keyStrategy = builder.keyStrategy;
+
+
         if (Objects.isNull(builder.okHttpClient)) {
             builder.okHttpClient = this.okHttpClient();
-        }else {
+        } else {
             //自定义的okhttpClient  需要增加api keys
             builder.okHttpClient = builder.okHttpClient
                     .newBuilder()
-                    .addInterceptor(new HeaderAuthorizationInterceptor(this.apiKey))
+                    .addInterceptor(new HeaderAuthorizationInterceptor(this.apiKey, this.keyStrategy))
                     .build();
         }
         okHttpClient = builder.okHttpClient;
@@ -127,7 +144,7 @@ public class OpenAiClient {
     private OkHttpClient okHttpClient() {
         OkHttpClient okHttpClient = new OkHttpClient
                 .Builder()
-                .addInterceptor(new HeaderAuthorizationInterceptor(this.apiKey))
+                .addInterceptor(new HeaderAuthorizationInterceptor(this.apiKey,this.keyStrategy))
                 .addInterceptor(new OpenAiResponseInterceptor())
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
@@ -365,12 +382,25 @@ public class OpenAiClient {
     }
 
     /**
-     * Creates an embedding vector representing the input text.
+     * 向量计算：单文本
      *
      * @param input
      * @return EmbeddingResponse
      */
     public EmbeddingResponse embeddings(String input) {
+        List<String> inputs = new ArrayList<>(1);
+        inputs.add(input);
+        Embedding embedding = Embedding.builder().input(inputs).build();
+        return this.embeddings(embedding);
+    }
+
+    /**
+     * 向量计算：集合文本
+     *
+     * @param input
+     * @return EmbeddingResponse
+     */
+    public EmbeddingResponse embeddings(List<String> input) {
         Embedding embedding = Embedding.builder().input(input).build();
         return this.embeddings(embedding);
     }
@@ -461,10 +491,23 @@ public class OpenAiClient {
     /**
      * 文本审核
      *
-     * @param input
+     * @param input 待检测数据
      * @return ModerationResponse
      */
     public ModerationResponse moderations(String input) {
+        List<String> content = new ArrayList<>(1);
+        content.add(input);
+        Moderation moderation = Moderation.builder().input(content).build();
+        return this.moderations(moderation);
+    }
+
+    /**
+     * 文本审核
+     *
+     * @param input 待检测数据集合
+     * @return ModerationResponse
+     */
+    public ModerationResponse moderations(List<String> input) {
         Moderation moderation = Moderation.builder().input(input).build();
         return this.moderations(moderation);
     }
@@ -550,10 +593,10 @@ public class OpenAiClient {
      * Delete a fine-tuned model. You must have the Owner role in your organization.
      *
      * @param model
-     * @return DeleteResponse
+     * @return FineTuneDeleteResponse
      */
-    public DeleteResponse deleteFineTuneModel(String model) {
-        Single<DeleteResponse> delete = this.openAiApi.deleteFineTuneModel(model);
+    public FineTuneDeleteResponse deleteFineTuneModel(String model) {
+        Single<FineTuneDeleteResponse> delete = this.openAiApi.deleteFineTuneModel(model);
         return delete.blockingGet();
     }
 
@@ -607,16 +650,32 @@ public class OpenAiClient {
     /**
      * 语音转文字
      *
-     * @param model 模型 Whisper.Model
-     * @param file  语音文件 最大支持25MB mp3, mp4, mpeg, mpga, m4a, wav, webm
+     * @param transcriptions 参数
+     * @param file           语音文件 最大支持25MB mp3, mp4, mpeg, mpga, m4a, wav, webm
      * @return 语音文本
      */
-    public WhisperResponse speechToTextTranscriptions(java.io.File file, Whisper.Model model) {
-        checkSpeechFileSize(file);
+    public WhisperResponse speechToTextTranscriptions(java.io.File file, Transcriptions transcriptions) {
+        //文件
         RequestBody fileBody = RequestBody.create(MediaType.parse("multipart/form-data"), file);
         MultipartBody.Part multipartBody = MultipartBody.Part.createFormData("file", file.getName(), fileBody);
-        RequestBody modelBody = RequestBody.create(MediaType.parse("multipart/form-data"), model.getName());
-        Single<WhisperResponse> whisperResponse = this.openAiApi.speechToTextTranscriptions(multipartBody, modelBody);
+        //自定义参数
+        Map<String,RequestBody> requestBodyMap = new HashMap<>();
+        if (StrUtil.isNotBlank(transcriptions.getLanguage())) {
+            requestBodyMap.put(Transcriptions.Fields.language, RequestBody.create(MediaType.parse("multipart/form-data"), transcriptions.getLanguage()));
+        }
+        if (StrUtil.isNotBlank(transcriptions.getModel())) {
+            requestBodyMap.put(Transcriptions.Fields.model, RequestBody.create(MediaType.parse("multipart/form-data"), transcriptions.getModel()));
+        }
+        if (StrUtil.isNotBlank(transcriptions.getPrompt())) {
+            requestBodyMap.put(Transcriptions.Fields.prompt, RequestBody.create(MediaType.parse("multipart/form-data"), transcriptions.getPrompt()));
+        }
+        if (StrUtil.isNotBlank(transcriptions.getResponseFormat())) {
+            requestBodyMap.put(Transcriptions.Fields.responseFormat, RequestBody.create(MediaType.parse("multipart/form-data"), transcriptions.getResponseFormat()));
+        }
+        if (Objects.nonNull(transcriptions.getTemperature())) {
+            requestBodyMap.put(Transcriptions.Fields.temperature, RequestBody.create(MediaType.parse("multipart/form-data"), String.valueOf(transcriptions.getTemperature())));
+        }
+        Single<WhisperResponse> whisperResponse = this.openAiApi.speechToTextTranscriptions(multipartBody, requestBodyMap);
         return whisperResponse.blockingGet();
     }
 
@@ -627,7 +686,8 @@ public class OpenAiClient {
      * @return 语音文本
      */
     public WhisperResponse speechToTextTranscriptions(java.io.File file) {
-        return this.speechToTextTranscriptions(file, Whisper.Model.WHISPER_1);
+        Transcriptions transcriptions = Transcriptions.builder().build();
+        return this.speechToTextTranscriptions(file, transcriptions);
 
     }
 
@@ -635,16 +695,30 @@ public class OpenAiClient {
     /**
      * 语音翻译：目前仅支持翻译为英文
      *
-     * @param model 模型 Whisper.Model
-     * @param file  语音文件 最大支持25MB mp3, mp4, mpeg, mpga, m4a, wav, webm
+     * @param translations 参数
+     * @param file         语音文件 最大支持25MB mp3, mp4, mpeg, mpga, m4a, wav, webm
      * @return 翻译后文本
      */
-    public WhisperResponse speechToTextTranslations(java.io.File file, Whisper.Model model) {
-        checkSpeechFileSize(file);
+    public WhisperResponse speechToTextTranslations(java.io.File file, Translations translations) {
+        //文件
         RequestBody fileBody = RequestBody.create(MediaType.parse("multipart/form-data"), file);
         MultipartBody.Part multipartBody = MultipartBody.Part.createFormData("file", file.getName(), fileBody);
-        RequestBody modelBody = RequestBody.create(MediaType.parse("multipart/form-data"), model.getName());
-        Single<WhisperResponse> whisperResponse = this.openAiApi.speechToTextTranslations(multipartBody, modelBody);
+        //自定义参数
+        Map<String,RequestBody> requestBodyMap = new HashMap<>();
+
+        if (StrUtil.isNotBlank(translations.getModel())) {
+            requestBodyMap.put(Translations.Fields.model, RequestBody.create(MediaType.parse("multipart/form-data"), translations.getModel()));
+        }
+        if (StrUtil.isNotBlank(translations.getPrompt())) {
+            requestBodyMap.put(Translations.Fields.prompt, RequestBody.create(MediaType.parse("multipart/form-data"), translations.getPrompt()));
+        }
+        if (StrUtil.isNotBlank(translations.getResponseFormat())) {
+            requestBodyMap.put(Translations.Fields.responseFormat, RequestBody.create(MediaType.parse("multipart/form-data"), translations.getResponseFormat()));
+        }
+        if (Objects.nonNull(translations.getTemperature())) {
+            requestBodyMap.put(Translations.Fields.temperature, RequestBody.create(MediaType.parse("multipart/form-data"), String.valueOf(translations.getTemperature())));
+        }
+        Single<WhisperResponse> whisperResponse = this.openAiApi.speechToTextTranslations(multipartBody, requestBodyMap);
         return whisperResponse.blockingGet();
     }
 
@@ -655,7 +729,8 @@ public class OpenAiClient {
      * @return 翻译后文本
      */
     public WhisperResponse speechToTextTranslations(java.io.File file) {
-        return this.speechToTextTranslations(file, Whisper.Model.WHISPER_1);
+        Translations translations = Translations.builder().build();
+        return this.speechToTextTranslations(file, translations);
     }
 
     /**
@@ -670,13 +745,38 @@ public class OpenAiClient {
     }
 
     /**
+     * ## 官方已经禁止使用此api
      * OpenAi账户余额查询
-     *
+     * @see #subscription()
+     * @see #billingUsage(LocalDate, LocalDate)
      * @return
      */
+    @Deprecated
     public CreditGrantsResponse creditGrants() {
         Single<CreditGrantsResponse> creditGrants = this.openAiApi.creditGrants();
         return creditGrants.blockingGet();
+    }
+
+    /**
+     * 账户信息查询：里面包含总金额等信息
+     *
+     * @return
+     */
+    public Subscription subscription() {
+        Single<Subscription> subscription = this.openAiApi.subscription();
+        return subscription.blockingGet();
+    }
+
+    /**
+     * 账户调用接口消耗金额信息查询
+     * 最多查询100天
+     * @param starDate  开始时间
+     * @param endDate   结束时间
+     * @return
+     */
+    public BillingUsage billingUsage(@NotNull LocalDate starDate, @NotNull LocalDate endDate) {
+        Single<BillingUsage> billingUsage = this.openAiApi.billingUsage(starDate, endDate);
+        return billingUsage.blockingGet();
     }
 
 
@@ -688,7 +788,7 @@ public class OpenAiClient {
         /**
          * api请求地址，结尾处有斜杠
          *
-         * @see com.unfbx.chatgpt.constant.OpenAIConst
+         * @see com.tech.chatgpt.constant.OpenAIConst
          */
         private String apiHost;
         /**
@@ -696,13 +796,18 @@ public class OpenAiClient {
          */
         private OkHttpClient okHttpClient;
 
+        /**
+         * api key的获取策略
+         */
+        private KeyStrategyFunction keyStrategy;
+
         public Builder() {
         }
 
         /**
          * @param val api请求地址，结尾处有斜杠
          * @return
-         * @see com.unfbx.chatgpt.constant.OpenAIConst
+         * @see com.tech.chatgpt.constant.OpenAIConst
          */
         public Builder apiHost(String val) {
             apiHost = val;
@@ -711,6 +816,11 @@ public class OpenAiClient {
 
         public Builder apiKey(@NotNull List<String> val) {
             apiKey = val;
+            return this;
+        }
+
+        public Builder keyStrategy(KeyStrategyFunction val) {
+            keyStrategy = val;
             return this;
         }
 

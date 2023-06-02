@@ -24,7 +24,7 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChatCompletion implements Serializable {
+public class AzureChatCompletion implements Serializable {
 
     @NonNull
     @Builder.Default
@@ -96,6 +96,7 @@ public class ChatCompletion implements Serializable {
      */
     private String user;
 
+    private String apiPath;
     /**
      * 获取当前参数的tokens数
      *

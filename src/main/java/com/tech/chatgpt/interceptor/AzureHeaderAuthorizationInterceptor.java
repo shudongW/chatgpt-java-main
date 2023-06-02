@@ -1,6 +1,5 @@
 package com.tech.chatgpt.interceptor;
 
-import cn.hutool.core.util.RandomUtil;
 import cn.hutool.http.ContentType;
 import cn.hutool.http.Header;
 import com.tech.chatgpt.function.KeyStrategyFunction;
@@ -18,7 +17,7 @@ import java.util.List;
  * @author grt
  */
 @Getter
-public class HeaderAuthorizationInterceptor implements Interceptor {
+public class AzureHeaderAuthorizationInterceptor implements Interceptor {
 
     /**
      * key 集合
@@ -34,7 +33,7 @@ public class HeaderAuthorizationInterceptor implements Interceptor {
      * @param apiKey        api keys列表
      * @param keyStrategy   自定义key的使用策略
      */
-    public HeaderAuthorizationInterceptor(List<String> apiKey, KeyStrategyFunction<List<String>, String> keyStrategy) {
+    public AzureHeaderAuthorizationInterceptor(List<String> apiKey, KeyStrategyFunction<List<String>, String> keyStrategy) {
         this.apiKey = apiKey;
         this.keyStrategy = keyStrategy;
     }
@@ -43,7 +42,7 @@ public class HeaderAuthorizationInterceptor implements Interceptor {
     public Response intercept(Chain chain) throws IOException {
         Request original = chain.request();
         Request request = original.newBuilder()
-                .header(Header.AUTHORIZATION.getValue(), "Bearer " + keyStrategy.apply(apiKey))
+                .header("api-key", keyStrategy.apply(apiKey))
                 .header(Header.CONTENT_TYPE.getValue(), ContentType.JSON.getValue())
                 .method(original.method(), original.body())
                 .build();

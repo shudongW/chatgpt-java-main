@@ -1,10 +1,13 @@
 package com.tech.chatgpt.exception;
 
+import lombok.Getter;
+
 /**
  * 描述： 异常
  *
  * @author wsd
  */
+@Getter
 public class BaseException extends RuntimeException {
 
     private String msg;

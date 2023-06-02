@@ -1,6 +1,8 @@
 package com.tech.chatgpt;
 
+import com.tech.chatgpt.entity.billing.BillingUsage;
 import com.tech.chatgpt.entity.billing.CreditGrantsResponse;
+import com.tech.chatgpt.entity.billing.Subscription;
 import com.tech.chatgpt.entity.chat.ChatCompletion;
 import com.tech.chatgpt.entity.chat.ChatCompletionResponse;
 import com.tech.chatgpt.entity.common.OpenAiResponse;
@@ -16,6 +18,7 @@ import com.tech.chatgpt.entity.common.DeleteResponse;
 import com.tech.chatgpt.entity.files.UploadFileResponse;
 import com.tech.chatgpt.entity.fineTune.Event;
 import com.tech.chatgpt.entity.fineTune.FineTune;
+import com.tech.chatgpt.entity.fineTune.FineTuneDeleteResponse;
 import com.tech.chatgpt.entity.fineTune.FineTuneResponse;
 import com.tech.chatgpt.entity.images.Image;
 import com.tech.chatgpt.entity.images.ImageResponse;
@@ -30,6 +33,7 @@ import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.http.*;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 /**
@@ -116,7 +120,7 @@ public interface OpenAiApi {
     );
 
     /**
-     * Creates an embedding vector representing the input text.
+     * 文本向量计算
      *
      * @param embedding
      * @return Single EmbeddingResponse
@@ -236,8 +240,8 @@ public interface OpenAiApi {
      *
      * @return Single DeleteResponse
      */
-    @GET("v1/models/{model}")
-    Single<DeleteResponse> deleteFineTuneModel(@Path("model") String model);
+    @DELETE("v1/models/{model}")
+    Single<FineTuneDeleteResponse> deleteFineTuneModel(@Path("model") String model);
 
 
     /**
@@ -273,32 +277,53 @@ public interface OpenAiApi {
     /**
      * 语音转文字
      *
-     * @param model 模型
-     * @param file  语音文件
+     * @param file              语音文件
+     * @param requestBodyMap    参数
      * @return 文本
      */
     @Multipart
     @POST("v1/audio/transcriptions")
     Single<WhisperResponse> speechToTextTranscriptions(@Part MultipartBody.Part file,
-                                                       @Part("model") RequestBody model);
+                                                       @PartMap() Map<String, RequestBody> requestBodyMap);
 
     /**
      * 语音翻译：目前仅支持翻译为英文
      *
-     * @param model 模型
-     * @param file  语音文件
+     * @param file              语音文件
+     * @param requestBodyMap    参数
      * @return 文本
      */
     @Multipart
     @POST("v1/audio/translations")
     Single<WhisperResponse> speechToTextTranslations(@Part MultipartBody.Part file,
-                                                     @Part("model") RequestBody model);
+                                                     @PartMap() Map<String, RequestBody> requestBodyMap);
 
     /**
      * 余额查询
+     * 官方禁止访问此接口
      *
      * @return 余额结果
      */
     @GET("dashboard/billing/credit_grants")
+    @Deprecated
     Single<CreditGrantsResponse> creditGrants();
+
+    /**
+     * 账户信息查询：里面包含总金额（美元）等信息
+     *
+     * @return
+     */
+    @GET("v1/dashboard/billing/subscription")
+    Single<Subscription> subscription();
+
+    /**
+     * 账户调用接口消耗金额信息查询
+     * totalUsage = 账户总使用金额（美分）
+     *
+     * @return
+     * @param starDate
+     * @param endDate
+     */
+    @GET("v1/dashboard/billing/usage")
+    Single<BillingUsage> billingUsage(@Query("start_date") LocalDate starDate, @Query("end_date") LocalDate endDate);
 }

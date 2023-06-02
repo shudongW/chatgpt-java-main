@@ -20,32 +20,24 @@ OpenAi官方文档地址：https://platform.openai.com/docs/api-reference
 ### 整合Spring Boot 实现CahtGPT对话模式，思路可以参考：https://github.com/shudongW/chatgpt-java-main
 此项目支持两种流式输出有完整示例代码可参考 。
 
-流式输出实现方式 | 小程序 | 安卓 | ios | H5 
+流式输出实现方式 | 小程序 | 安卓 | ios | H5   
 ---|---|---|---|---
-SSE参考：[OpenAIEventSourceListener](https://github.com/shudongW/chatgpt-steam-server/main/src/main/java/com/chatgpt/steam/server/listener/OpenAIEventSourceListener.java) | 不支持| 支持| 支持 | 支持
-WebSocket参考：[SocketIOListener](https://github.com/shudongW/chatgpt-steam-server/main/src/main/java/com/chatgpt/steam/server/listener/SocketIOListener.java.java) | 支持| 支持| 支持| 支持
+SSE参考：[OpenAIEventSourceListener](https://github.com/shudongW/chatgpt-steam-server/blob/main/src/main/java/com/tech/chatgpt/listener/OpenAIEventSourceListener.java) | 不支持| 支持| 支持 | 支持
+WebSocket参考：[SocketIOListener](https://github.com/shudongW/chatgpt-steam-server/blob/main/src/main/java/com/tech/chatgpt/listener/SocketIOListener.java) | 支持| 支持| 支持| 支持
 ### 有bug欢迎朋友们指出，互相学习，所有咨询全部免费。
 公众号 | 微信 | 知识星球
 ---|---|---
 <img width="210" height="300" alt="二维码" src="https://raw.githubusercontent.com/shudongW/myself_img/main/gzh.jpg"> | <img width="210" height="300" alt="二维码" src="https://raw.githubusercontent.com/shudongW/myself_img/main/me.png"> | <img width="310" height="210" alt="二维码" src="https://raw.githubusercontent.com/shudongW/myself_img/main/xt.jpg">
 ---
 ## 更新日志
-- [x] 1.0.0   支持所有的OpenAI官方接口
-- [x] 1.0.1   支持自定义超时时间，自定义OkHttpClient拦截器，参考：OpenAiClient构造函数
-- [x] 1.0.2   支持Stream流式输出，参考：OpenAiStreamClient
-- [x] 1.0.3   支持最新的GPT-3.5-Turbo模型和Whisper-1模型，支持语音功能转文字，语音翻译。OpenAiClient和OpenAiStreamClient支持Builder构造，支持代理。
-- [x] 1.0.4   官方最新的ChatGPT Stream模式下的Api返回值改动。
-- [x] 1.0.5   支持自定义Api Host，使用Builder构建。参考下面的快速开始部分代码。
-- [x] 1.0.6   支持余额查询参考：[OpenAiClientTest](https://github.com/shudongW/chatgpt-steam-server/main/src/main/src/test/java/com/unfbx/chatgpt/OpenAiClientTest.java) 和[OpenAiStreamClientTest](https://github.com/Grt1228/chatgpt-java/blob/main/src/test/java/com/unfbx/chatgpt/OpenAiStreamClientTest.java) creditGrants方法,支持最新GPT-4模型，参考：[ChatCompletion.Model](https://github.com/Grt1228/chatgpt-java/blob/main/src/main/java/com/unfbx/chatgpt/entity/chat/ChatCompletion.java/)构建消息体传入模型即可。感谢群友提供的余额接口地址以及[@PlexPt](https://github.com/PlexPt) 提供的模型参数
-- [x] 1.0.7   修复反序列化报错Bug：https://github.com/Grt1228/chatgpt-java/issues/79 ，Image SDK枚举值bug：https://github.com/Grt1228/chatgpt-java/issues/76 ，感谢两位朋友指出：[@CCc3120](https://github.com/CCc3120) 、[@seven-cm](https://github.com/seven-cm)
-- [x] 1.0.8   修改OpenAiClient和OpenAiStreamClient的自定义相关实现，超时设置，代理设置，自定义拦截器设置改为通过自定义OkHttpClient实现，将OkHttpClient交由用户自定义控制更加合理，可以实现更多的参数自定义。支持多Api Keys配置。
----
-
+- [x] 1.0.8   支持所有的OpenAI官方接口
+- [x] 1.0.13   支持Azure OpenAI官方接口
+- 
 Q | A
 ---|---
-如何整合SpringBoot实现流式输出的Api接口？ | 参考另外一个项目：[chatgpt-steam-output](https://github.com/shudongW/chatgpt-steam-server)
-最新版GPT-3.5-TURBO是否支持？ | 升级1.0.3 已经支持ChatCompletion, 参考测试案例：[OpenAiStreamClientTest](https://github.com/shudongW/chatgpt-steam-server/main/src/test/java/com/unfbx/chatgpt/OpenAiStreamClientTest.java/) 和[OpenAiStreamClientTest](https://github.com/Grt1228/chatgpt-java/blob/main/src/test/java/com/unfbx/chatgpt/OpenAiClientTest.java/)
-最新版语言转文字和语言翻译是否支持？ | 升级1.0.3 已经支持whisper参考测试案例：[OpenAiStreamClientTest](https://github.com/shudongW/chatgpt-steam-server/main//src/test/java/com/unfbx/chatgpt/OpenAiStreamClientTest.java/) 和[OpenAiStreamClientTest](https://github.com/Grt1228/chatgpt-java/blob/main/src/test/java/com/unfbx/chatgpt/OpenAiClientTest.java/)
+如何整合SpringBoot实现流式输出的Api接口？ | 参考另外一个项目：[chatgpt-steam-server](https://github.com/shudongW/chatgpt-steam-server)
+最新版GPT-3.5-TURBO是否支持？ |参考测试案例：[OpenAiStreamClientTest](https://github.com/shudongW/chatgpt-java-main/blob/main/src/test/java/com/tech/chatgpt/OpenAiStreamClientTest.java) 
+最新版语言转文字和语言翻译是否支持？ | 已经支持whisper参考测试案例：[OpenAiStreamClientTest](https://github.com/shudongW/chatgpt-java-main/blob/main/src/test/java/com/tech/chatgpt/OpenAiStreamClientTest.java) 
 ---
 # 工程简介
 
@@ -70,7 +62,7 @@ OpenAi官方文档地址：https://platform.openai.com/docs/api-reference
 </dependency>
 ```
 ## 2、流式客户端使用示例：
-更多SDK示例参考：[OpenAiStreamClientTest](https://github.com/shudongW/chatgpt-java-main/main/src/test/java/com/unfbx/chatgpt/OpenAiStreamClientTest.java) 
+更多SDK示例参考：[OpenAiStreamClientTest](https://github.com/shudongW/chatgpt-java-main/blob/main/src/test/java/com/tech/chatgpt/OpenAiStreamClientTest.java) 
 ### 默认OkHttpClient
 ```
 public class Test {
@@ -139,7 +131,7 @@ public class Test {
 23:03:59.815 [省略无效信息] INFO com.unfbx.chatgpt.sse.ConsoleEventSourceListener - OpenAI关闭sse连接...
 ```
 ## 3、默认客户端使用示例（支持全部API）：
-更多SDK示例参考：[OpenAiClientTest](https://github.com/shudongW/chatgpt-java-main/main/src/test/java/com/unfbx/chatgpt/OpenAiClientTest.java) 
+更多SDK示例参考：[OpenAiClientTest](https://github.com/shudongW/chatgpt-java-main/blob/main/src/test/java/com/tech/chatgpt/OpenAiClientTest.java) 
 ### 默认OkHttpClient
 ```
 public class Test {

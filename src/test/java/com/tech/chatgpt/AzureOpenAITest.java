@@ -1,38 +1,37 @@
 package com.tech.chatgpt;
 
-import com.tech.chatgpt.entity.billing.BillingUsage;
-import com.tech.chatgpt.entity.billing.CreditGrantsResponse;
 import com.tech.chatgpt.entity.billing.Subscription;
+import com.tech.chatgpt.entity.chat.AzureChatCompletion;
 import com.tech.chatgpt.entity.chat.ChatCompletion;
+import com.tech.chatgpt.entity.chat.ChatCompletionResponse;
 import com.tech.chatgpt.entity.chat.Message;
 import com.tech.chatgpt.entity.completions.Completion;
 import com.tech.chatgpt.interceptor.OpenAILogger;
+import com.tech.chatgpt.interceptor.OpenAiResponseInterceptor;
 import com.tech.chatgpt.sse.ConsoleEventSourceListener;
+import com.tech.chatgpt.utils.TikTokensUtil;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.time.LocalDate;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-/**
- * 描述： 测试类
- *
- * @author wsd
- * 2023-02-28
- */
 @Slf4j
-public class OpenAiStreamClientTest {
+public class AzureOpenAITest {
 
-    private OpenAiStreamClient client;
+    private AzureOpenAISteamClient client;
 
     @Before
     public void before() {
-        //国内访问需要做代理，国外服务器不需要
+        //可以为null
 //        Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 7890));
         HttpLoggingInterceptor httpLoggingInterceptor = new HttpLoggingInterceptor(new OpenAILogger());
         //！！！！千万别再生产或者测试环境打开BODY级别日志！！！！
@@ -42,46 +41,26 @@ public class OpenAiStreamClientTest {
                 .Builder()
 //                .proxy(proxy)
                 .addInterceptor(httpLoggingInterceptor)
-                .connectTimeout(30, TimeUnit.SECONDS)
+                .addInterceptor(new OpenAiResponseInterceptor())
+                .connectTimeout(10, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
-        client = OpenAiStreamClient.builder()
-                .apiKey(Arrays.asList("sk-***********","sk-*********"))
+        client = AzureOpenAISteamClient.builder()
+                //支持多key传入，请求时候随机选择
+                .apiKey(Arrays.asList("14c7681442f4493da9a40b57ec3c5d5b"))
                 //自定义key的获取策略：默认KeyRandomStrategy
-//                .keyStrategy(new KeyRandomStrategy())
+                //.keyStrategy(new KeyRandomStrategy())
                 .keyStrategy(new FirstKeyStrategy())
                 .okHttpClient(okHttpClient)
-                //自己做了代理就传代理地址，没有可不不传（(关注公众号回复：openai ，获取免费的测试代理地址)）
-//                .apiHost("https://自己代理的服务器地址/")
+                //自己做了代理就传代理地址，没有可不不传,(关注公众号回复：openai ，获取免费的测试代理地址)
+                .apiHost("https://azure-openai-alight.openai.azure.com/")
                 .build();
     }
 
     @Test
-    public void subscription() {
-        Subscription subscription = client.subscription();
-        log.info("用户名：{}", subscription.getAccountName());
-        log.info("用户总余额（美元）：{}", subscription.getHardLimitUsd());
-        log.info("更多信息看Subscription类");
-    }
-
-    @Test
-    public void billingUsage() {
-        LocalDate start = LocalDate.of(2023, 3, 7);
-        BillingUsage billingUsage = client.billingUsage(start, LocalDate.now());
-        log.info("总使用金额（美分）：{}", billingUsage.getTotalUsage());
-        log.info("更多信息看BillingUsage类");
-    }
-    @Test
-    public void creditGrants() {
-        CreditGrantsResponse creditGrantsResponse = client.creditGrants();
-        log.info("账户总余额（美元）：{}", creditGrantsResponse.getTotalGranted());
-        log.info("账户总使用金额（美元）：{}", creditGrantsResponse.getTotalUsed());
-        log.info("账户总剩余金额（美元）：{}", creditGrantsResponse.getTotalAvailable());
-    }
-
-    @Test
-    public void chatCompletions() {
+    public void chatStreamTest() {
+        //聊天模型：gpt-3.5
         ConsoleEventSourceListener eventSourceListener = new ConsoleEventSourceListener();
         Message message = Message.builder().role(Message.Role.USER).content("random one word！").build();
         ChatCompletion chatCompletion = ChatCompletion
@@ -92,7 +71,7 @@ public class OpenAiStreamClientTest {
                 .messages(Arrays.asList(message))
                 .stream(true)
                 .build();
-        client.streamChatCompletion(chatCompletion, eventSourceListener);
+        client.streamChatCompletion(chatCompletion, eventSourceListener, "openai/deployments/AI35/chat/completions?api-version=2023-03-15-preview");
         CountDownLatch countDownLatch = new CountDownLatch(1);
         try {
             countDownLatch.await();
@@ -102,13 +81,18 @@ public class OpenAiStreamClientTest {
     }
 
     @Test
-    public void completions() {
+    public void chatTest() {
+        //聊天模型：davinci--003
         ConsoleEventSourceListener eventSourceListener = new ConsoleEventSourceListener();
-        Completion q = Completion.builder()
-                .prompt("我想申请转专业，从计算机专业转到会计学专业，帮我完成一份两百字左右的申请书")
+        Completion completion = Completion
+                .builder()
+                .model("text-davinci-003")
+                .prompt("random one word!")
+                .temperature(0.2)
+                .maxTokens(2048)
                 .stream(true)
                 .build();
-        client.streamCompletions(q, eventSourceListener);
+        client.streamCompletions(completion, eventSourceListener, "openai/deployments/Davinci003/completions?api-version=2022-12-01");
         CountDownLatch countDownLatch = new CountDownLatch(1);
         try {
             countDownLatch.await();
@@ -116,6 +100,4 @@ public class OpenAiStreamClientTest {
             e.printStackTrace();
         }
     }
-
-
 }

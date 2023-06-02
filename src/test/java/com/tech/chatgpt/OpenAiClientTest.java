@@ -5,7 +5,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.tech.chatgpt.entity.billing.BillingUsage;
 import com.tech.chatgpt.entity.billing.CreditGrantsResponse;
+import com.tech.chatgpt.entity.billing.Subscription;
 import com.tech.chatgpt.entity.chat.ChatCompletion;
 import com.tech.chatgpt.entity.chat.ChatCompletionResponse;
 import com.tech.chatgpt.entity.chat.Message;
@@ -21,16 +23,20 @@ import com.tech.chatgpt.entity.common.DeleteResponse;
 import com.tech.chatgpt.entity.files.UploadFileResponse;
 import com.tech.chatgpt.entity.fineTune.Event;
 import com.tech.chatgpt.entity.fineTune.FineTune;
+import com.tech.chatgpt.entity.fineTune.FineTuneDeleteResponse;
 import com.tech.chatgpt.entity.fineTune.FineTuneResponse;
 import com.tech.chatgpt.entity.images.*;
 import com.tech.chatgpt.entity.models.Model;
 import com.tech.chatgpt.entity.moderations.Moderation;
 import com.tech.chatgpt.entity.moderations.ModerationResponse;
+import com.tech.chatgpt.entity.whisper.Transcriptions;
+import com.tech.chatgpt.entity.whisper.Translations;
 import com.tech.chatgpt.entity.whisper.Whisper;
 import com.tech.chatgpt.entity.whisper.WhisperResponse;
 import com.tech.chatgpt.interceptor.HeaderAuthorizationInterceptor;
 import com.tech.chatgpt.interceptor.OpenAILogger;
 import com.tech.chatgpt.interceptor.OpenAiResponseInterceptor;
+import com.tech.chatgpt.utils.TikTokensUtil;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
@@ -39,10 +45,8 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -61,7 +65,9 @@ public class OpenAiClientTest {
         //可以为null
         Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 7890));
         HttpLoggingInterceptor httpLoggingInterceptor = new HttpLoggingInterceptor(new OpenAILogger());
-        httpLoggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        //！！！！千万别再生产或者测试环境打开BODY级别日志！！！！
+        //！！！生产或者测试环境建议设置为这三种级别：NONE,BASIC,HEADERS,！！！
+        httpLoggingInterceptor.setLevel(HttpLoggingInterceptor.Level.HEADERS);
         OkHttpClient okHttpClient = new OkHttpClient
                 .Builder()
                 .proxy(proxy)
@@ -73,11 +79,55 @@ public class OpenAiClientTest {
                 .build();
         v2 = OpenAiClient.builder()
                 //支持多key传入，请求时候随机选择
-                .apiKey(Arrays.asList("sk-********","sk-********"))
+                .apiKey(Arrays.asList("sk-***********","sk-*********"))
+                //自定义key的获取策略：默认KeyRandomStrategy
+                //.keyStrategy(new KeyRandomStrategy())
+                .keyStrategy(new FirstKeyStrategy())
                 .okHttpClient(okHttpClient)
-                //自己做了代理就传代理地址，没有可不不传
+                //自己做了代理就传代理地址，没有可不不传,(关注公众号回复：openai ，获取免费的测试代理地址)
 //                .apiHost("https://自己代理的服务器地址/")
                 .build();
+    }
+    @Test
+    public void subscription() {
+        Subscription subscription = v2.subscription();
+        log.info("用户名：{}", subscription.getAccountName());
+        log.info("用户总余额（美元）：{}", subscription.getHardLimitUsd());
+        log.info("更多信息看Subscription类");
+    }
+
+    @Test
+    public void billingUsage() {
+        LocalDate start = LocalDate.of(2023, 3, 7);
+        BillingUsage billingUsage = v2.billingUsage(start, LocalDate.now());
+        log.info("总使用金额（美分）：{}", billingUsage.getTotalUsage());
+        log.info("更多信息看BillingUsage类");
+    }
+
+
+    @Test
+    public void chatTokensTest() {
+        //聊天模型：gpt-3.5
+        List<Message> messages = new ArrayList<>(2);
+        messages.add(Message.builder().role(Message.Role.USER).content("关注微信公众号：程序员的黑洞。").build());
+        messages.add(Message.builder().role(Message.Role.USER).content("进入chatgpt-java交流群获取最新版本更新通知。").build());
+        ChatCompletion chatCompletion = ChatCompletion
+                .builder()
+                .messages(messages)
+                .maxTokens((4096 - TikTokensUtil.tokens(ChatCompletion.Model.GPT_3_5_TURBO.getName(),messages)))
+                .build();
+        ChatCompletionResponse chatCompletionResponse = v2.chatCompletion(chatCompletion);
+        //获取请求的tokens数量
+        long tokens = chatCompletion.tokens();
+        //这种方式也可以
+//        long tokens = TikTokensUtil.tokens(chatCompletion.getModel(),messages);
+        log.info("Message集合文本：【{}】", messages, tokens);
+        log.info("本地计算的请求的tokens数{}", tokens);
+        log.info("本地计算的返回的tokens数{}", TikTokensUtil.tokens(chatCompletion.getModel(),chatCompletionResponse.getChoices().get(0).getMessage().getContent()));
+        log.info("---------------------------------------------------");
+        log.info("Open AI 官方计算的总的tokens数{}", chatCompletionResponse.getUsage().getTotalTokens());
+        log.info("Open AI 官方计算的请求的tokens数{}", chatCompletionResponse.getUsage().getPromptTokens());
+        log.info("Open AI 官方计算的返回的tokens数{}", chatCompletionResponse.getUsage().getCompletionTokens());
     }
 
     @Test
@@ -101,33 +151,67 @@ public class OpenAiClientTest {
         log.info("账户总使用金额（美元）：{}", creditGrantsResponse.getTotalUsed());
         log.info("账户总剩余金额（美元）：{}", creditGrantsResponse.getTotalAvailable());
     }
-    @Test
-    public void speechToTextTranscriptions() {
-        //语音转文字
-        WhisperResponse whisperResponse =
-                v2.speechToTextTranscriptions(new java.io.File("C:\\***********\\1.m4a")
-                , Whisper.Model.WHISPER_1);
-        System.out.println(whisperResponse.getText());
-    }
 
-    @Test
-    public void speechToTextTranslations() {
-        //语音转文字
-        WhisperResponse whisperResponse =
-                v2.speechToTextTranslations(new java.io.File("C:\\***********\\1.m4a")
-                        , Whisper.Model.WHISPER_1);
-        System.out.println(whisperResponse.getText());
-    }
 
     @Test
     public void chat() {
         //聊天模型：gpt-3.5
         Message message = Message.builder().role(Message.Role.USER).content("你好啊我的伙伴！").build();
-        ChatCompletion chatCompletion = ChatCompletion.builder().messages(Arrays.asList(message)).build();
+        ChatCompletion chatCompletion = ChatCompletion
+                .builder()
+                .messages(Arrays.asList(message))
+                .model(ChatCompletion.Model.GPT_3_5_TURBO.getName())
+                .build();
         ChatCompletionResponse chatCompletionResponse = v2.chatCompletion(chatCompletion);
         chatCompletionResponse.getChoices().forEach(e -> {
             System.out.println(e.getMessage());
         });
+    }
+
+    @Test
+    public void speechToTextTranscriptions() {
+        Transcriptions transcriptions = Transcriptions.builder()
+                .model(Whisper.Model.WHISPER_1.getName())
+                .prompt("提示语")
+                .language("zh")
+                .temperature(0.2)
+                .responseFormat(Whisper.ResponseFormat.VTT.getName())
+                .build();
+
+        //语音转文字
+        WhisperResponse whisperResponse =
+                v2.speechToTextTranscriptions(new java.io.File("C:\\Users\\grt\\Desktop\\1.m4a") , transcriptions);
+        System.out.println(whisperResponse.getText());
+    }
+
+    @Test
+    public void speechToTextTranscriptionsV2() {
+        //语音转文字
+        WhisperResponse whisperResponse =
+                v2.speechToTextTranscriptions(new java.io.File("C:\\Users\\grt\\Desktop\\1.m4a"));
+        System.out.println(whisperResponse.getText());
+    }
+
+    @Test
+    public void speechToTextTranslations() {
+        Translations translations = Translations.builder()
+                .model(Whisper.Model.WHISPER_1.getName())
+//                .prompt("提示语")
+                .temperature(0.2)
+                .responseFormat(Whisper.ResponseFormat.JSON.getName())
+                .build();
+        //语音转文字+翻译
+        WhisperResponse whisperResponse =
+                v2.speechToTextTranslations(new java.io.File("C:\\Users\\**\\Desktop\\1.m4a"), translations);
+        System.out.println(whisperResponse.getText());
+    }
+
+    @Test
+    public void speechToTextTranslationsV2() {
+        //语音转文字+翻译
+        WhisperResponse whisperResponse =
+                v2.speechToTextTranslations(new java.io.File("C:\\Users\\**\\Desktop\\1.m4a"));
+        System.out.println(whisperResponse.getText());
     }
 
     @Test
@@ -182,7 +266,8 @@ public class OpenAiClientTest {
     public void completionsV2() {
         Completion q = Completion.builder()
                 .prompt("三体人是什么？")
-                .model("ada:ft-org-DL6GzliwY20i7Lxr5pUAoKUH:2023-02-16-05-42-02")
+                .n(2)
+                .bestOf(3)
                 .build();
         CompletionResponse completions = v2.completions(q);
         System.out.println(completions);
@@ -201,7 +286,7 @@ public class OpenAiClientTest {
 
     @Test
     public void genImages() {
-        Image image = Image.builder().prompt("电脑画面").build();
+        Image image = Image.builder().prompt("电脑画面").responseFormat(ResponseFormat.B64_JSON.getName()).build();
         ImageResponse imageResponse = v2.genImages(image);
         System.out.println(imageResponse);
     }
@@ -255,15 +340,20 @@ public class OpenAiClientTest {
 
     @Test
     public void embeddingsV2() {
-        Embedding embedding = Embedding.builder().input("我爱你亲爱的姑娘").build();
+        Embedding embedding = Embedding.builder().input(Arrays.asList("我爱你亲爱的姑娘", "i love you")).build();
         EmbeddingResponse embeddings = v2.embeddings(embedding);
         System.out.println(embeddings);
     }
 
+    @Test
+    public void embeddingsV3() {
+        EmbeddingResponse embeddings = v2.embeddings(Arrays.asList("我爱你亲爱的姑娘", "i love you"));
+        System.out.println(embeddings);
+    }
 
     @Test
     public void embeddings() {
-        EmbeddingResponse embeddings = v2.embeddings("The food was delicious and the waiter...");
+        EmbeddingResponse embeddings = v2.embeddings("我爱你");
         System.out.println(embeddings);
     }
 
@@ -315,8 +405,15 @@ public class OpenAiClientTest {
     }
 
     @Test
+    public void moderationsv3() {
+        List<String> list = Arrays.asList("I want to kill them.");
+        ModerationResponse moderations = v2.moderations(list);
+        System.out.println(moderations);
+    }
+
+    @Test
     public void moderationsV2() {
-        Moderation moderation = Moderation.builder().input("I want to kill them.").build();
+        Moderation moderation = Moderation.builder().input(Arrays.asList("I want to kill them.")).build();
         ModerationResponse moderations = v2.moderations(moderation);
         System.out.println(moderations);
     }
@@ -377,7 +474,7 @@ public class OpenAiClientTest {
 
     @Test
     public void deleteFineTuneModel() {
-        DeleteResponse deleteResponse = v2.deleteFineTuneModel("ft-KohbEOCbPyNTyQmt5UV1F1cb");
+        FineTuneDeleteResponse deleteResponse = v2.deleteFineTuneModel("ada:ft-winter:grttttttttt-2023-02-17-01-29-27");
         System.out.println(deleteResponse);
     }
 }

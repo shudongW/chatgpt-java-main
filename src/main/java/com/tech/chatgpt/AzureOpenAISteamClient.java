@@ -3,26 +3,21 @@ package com.tech.chatgpt;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.ContentType;
-import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tech.chatgpt.constant.OpenAIConst;
-import com.tech.chatgpt.entity.billing.BillingUsage;
-import com.tech.chatgpt.entity.billing.CreditGrantsResponse;
-import com.tech.chatgpt.entity.billing.Subscription;
+import com.tech.chatgpt.entity.chat.AzureChatCompletion;
 import com.tech.chatgpt.entity.chat.ChatCompletion;
 import com.tech.chatgpt.entity.chat.Message;
-import com.tech.chatgpt.entity.common.OpenAiResponse;
+import com.tech.chatgpt.entity.completions.AzureCompletion;
 import com.tech.chatgpt.entity.completions.Completion;
 import com.tech.chatgpt.exception.BaseException;
 import com.tech.chatgpt.exception.CommonError;
 import com.tech.chatgpt.function.KeyRandomStrategy;
 import com.tech.chatgpt.function.KeyStrategyFunction;
-import com.tech.chatgpt.interceptor.HeaderAuthorizationInterceptor;
+import com.tech.chatgpt.interceptor.AzureHeaderAuthorizationInterceptor;
 import com.tech.chatgpt.sse.ConsoleEventSourceListener;
-import io.reactivex.Single;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import okhttp3.sse.EventSource;
@@ -33,20 +28,13 @@ import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-
-/**
- * 描述： open ai 客户端
- *
- * @author wsd
- */
-
 @Slf4j
-public class OpenAiStreamClient {
+public class AzureOpenAISteamClient {
+
     @Getter
     @NotNull
     private List<String> apiKey;
@@ -55,6 +43,8 @@ public class OpenAiStreamClient {
      */
     @Getter
     private String apiHost;
+
+
     /**
      * 自定义的okHttpClient
      * 如果不自定义 ，就是用sdk默认的OkHttpClient实例
@@ -76,7 +66,7 @@ public class OpenAiStreamClient {
      *
      * @param builder
      */
-    private OpenAiStreamClient(Builder builder) {
+    private AzureOpenAISteamClient(AzureOpenAISteamClient.Builder builder) {
         if (CollectionUtil.isEmpty(builder.apiKey)) {
             throw new BaseException(CommonError.API_KEYS_NOT_NUL);
         }
@@ -98,7 +88,7 @@ public class OpenAiStreamClient {
             //自定义的okhttpClient  需要增加api keys
             builder.okHttpClient = builder.okHttpClient
                     .newBuilder()
-                    .addInterceptor(new HeaderAuthorizationInterceptor(this.apiKey, this.keyStrategy))
+                    .addInterceptor(new AzureHeaderAuthorizationInterceptor(this.apiKey, this.keyStrategy))
                     .build();
         }
         okHttpClient = builder.okHttpClient;
@@ -117,7 +107,7 @@ public class OpenAiStreamClient {
     private OkHttpClient okHttpClient() {
         OkHttpClient okHttpClient = new OkHttpClient
                 .Builder()
-                .addInterceptor(new HeaderAuthorizationInterceptor(this.apiKey, this.keyStrategy))
+                .addInterceptor(new AzureHeaderAuthorizationInterceptor(this.apiKey, this.keyStrategy))
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .writeTimeout(50, TimeUnit.SECONDS)
                 .readTimeout(50, TimeUnit.SECONDS)
@@ -132,7 +122,7 @@ public class OpenAiStreamClient {
      * @param eventSourceListener sse监听器
      * @see ConsoleEventSourceListener
      */
-    public void streamCompletions(Completion completion, EventSourceListener eventSourceListener) {
+    public void streamCompletions(Completion completion, EventSourceListener eventSourceListener, String apiPath) {
         if (Objects.isNull(eventSourceListener)) {
             log.error("参数异常：EventSourceListener不能为空，可以参考：com.unfbx.chatgpt.sse.ConsoleEventSourceListener");
             throw new BaseException(CommonError.PARAM_ERROR);
@@ -149,7 +139,7 @@ public class OpenAiStreamClient {
             ObjectMapper mapper = new ObjectMapper();
             String requestBody = mapper.writeValueAsString(completion);
             Request request = new Request.Builder()
-                    .url(this.apiHost + "v1/completions")
+                    .url(this.apiHost + apiPath)
                     .post(RequestBody.create(MediaType.parse(ContentType.JSON.getValue()), requestBody))
                     .build();
             //创建事件
@@ -170,12 +160,12 @@ public class OpenAiStreamClient {
      * @param eventSourceListener sse监听器
      * @see ConsoleEventSourceListener
      */
-    public void streamCompletions(String question, EventSourceListener eventSourceListener) {
+    public void streamCompletions(String question, EventSourceListener eventSourceListener, String apiPath) {
         Completion q = Completion.builder()
                 .prompt(question)
                 .stream(true)
                 .build();
-        this.streamCompletions(q, eventSourceListener);
+        this.streamCompletions(q, eventSourceListener, apiPath);
     }
 
     /**
@@ -185,7 +175,7 @@ public class OpenAiStreamClient {
      * @param eventSourceListener sse监听器
      * @see ConsoleEventSourceListener
      */
-    public void streamChatCompletion(ChatCompletion chatCompletion, EventSourceListener eventSourceListener) {
+    public void streamChatCompletion(ChatCompletion chatCompletion, EventSourceListener eventSourceListener, String apiPath) {
         if (Objects.isNull(eventSourceListener)) {
             log.error("参数异常：EventSourceListener不能为空，可以参考：com.unfbx.chatgpt.sse.ConsoleEventSourceListener");
             throw new BaseException(CommonError.PARAM_ERROR);
@@ -198,7 +188,7 @@ public class OpenAiStreamClient {
             ObjectMapper mapper = new ObjectMapper();
             String requestBody = mapper.writeValueAsString(chatCompletion);
             Request request = new Request.Builder()
-                    .url(this.apiHost + "v1/chat/completions")
+                    .url(this.apiHost + apiPath)
                     .post(RequestBody.create(MediaType.parse(ContentType.JSON.getValue()), requestBody))
                     .build();
             //创建事件
@@ -219,93 +209,33 @@ public class OpenAiStreamClient {
      * @param eventSourceListener sse监听器
      * @see ConsoleEventSourceListener
      */
-    public void streamChatCompletion(List<Message> messages, EventSourceListener eventSourceListener) {
+    public void streamChatCompletion(List<Message> messages, EventSourceListener eventSourceListener, String apiPath) {
         ChatCompletion chatCompletion = ChatCompletion.builder()
                 .messages(messages)
                 .stream(true)
                 .build();
-        this.streamChatCompletion(chatCompletion, eventSourceListener);
+        this.streamChatCompletion(chatCompletion, eventSourceListener, apiPath);
     }
 
-    /**
-     * ## 官方已经禁止使用此api
-     * OpenAi账户余额查询
-     *
-     * @return 余额信息
-     */
-    @SneakyThrows
-    @Deprecated
-    public CreditGrantsResponse creditGrants() {
-        Request request = new Request.Builder()
-                .url(this.apiHost + "dashboard/billing/credit_grants")
-                .get()
-                .build();
-        Response response = this.okHttpClient.newCall(request).execute();
-        ResponseBody body = response.body();
-        String bodyStr = body.string();
-//        log.info("调用查询余额请求返回值：{}", bodyStr);
-        if (!response.isSuccessful()) {
-            if (response.code() == CommonError.OPENAI_AUTHENTICATION_ERROR.code()
-                    || response.code() == CommonError.OPENAI_LIMIT_ERROR.code()
-                    || response.code() == CommonError.OPENAI_SERVER_ERROR.code()) {
-                OpenAiResponse openAiResponse = JSONUtil.toBean(bodyStr, OpenAiResponse.class);
-                log.error(openAiResponse.getError().getMessage());
-                throw new BaseException(openAiResponse.getError().getMessage());
-            }
-            String errorMsg = bodyStr;
-            log.error("询余额请求异常：{}", errorMsg);
-            OpenAiResponse openAiResponse = JSONUtil.toBean(errorMsg, OpenAiResponse.class);
-            if (Objects.nonNull(openAiResponse.getError())) {
-                log.error(openAiResponse.getError().getMessage());
-                throw new BaseException(openAiResponse.getError().getMessage());
-            }
-            throw new BaseException(CommonError.RETRY_ERROR);
-        }
-        ObjectMapper mapper = new ObjectMapper();
-        // 读取Json 返回值
-        CreditGrantsResponse completionResponse = mapper.readValue(bodyStr, CreditGrantsResponse.class);
-        return completionResponse;
-    }
-
-    /**
-     * 账户信息查询：里面包含总金额等信息
-     *
-     * @return
-     */
-    public Subscription subscription() {
-        Single<Subscription> subscription = this.openAiApi.subscription();
-        return subscription.blockingGet();
-    }
-
-    /**
-     * 账户调用接口消耗金额信息查询
-     * 最多查询100天
-     * @param starDate  开始时间
-     * @param endDate   结束时间
-     * @return
-     */
-    public BillingUsage billingUsage(@NotNull LocalDate starDate, @NotNull LocalDate endDate) {
-        Single<BillingUsage> billingUsage = this.openAiApi.billingUsage(starDate, endDate);
-        return billingUsage.blockingGet();
-    }
 
     /**
      * 构造
      *
      * @return
      */
-    public static OpenAiStreamClient.Builder builder() {
-        return new OpenAiStreamClient.Builder();
+    public static AzureOpenAISteamClient.Builder builder() {
+        return new AzureOpenAISteamClient.Builder();
     }
 
     public static final class Builder {
         private @NotNull List<String> apiKey;
+
         /**
-         * api请求地址，结尾处有斜杠
          *
-         * @see com.tech.chatgpt.constant.OpenAIConst
          */
         private String apiHost;
+
+        private String apiPath;
 
         /**
          * 自定义OkhttpClient
@@ -330,12 +260,12 @@ public class OpenAiStreamClient {
         /**
          * @param val api请求地址，结尾处有斜杠
          * @return
-         * @see com.tech.chatgpt.constant.OpenAIConst
          */
         public Builder apiHost(String val) {
             apiHost = val;
             return this;
         }
+
 
         public Builder keyStrategy(KeyStrategyFunction val) {
             keyStrategy = val;
@@ -347,8 +277,8 @@ public class OpenAiStreamClient {
             return this;
         }
 
-        public OpenAiStreamClient build() {
-            return new OpenAiStreamClient(this);
+        public AzureOpenAISteamClient build() {
+            return new AzureOpenAISteamClient(this);
         }
     }
 }
