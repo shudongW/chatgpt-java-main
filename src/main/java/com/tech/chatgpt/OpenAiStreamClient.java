@@ -18,7 +18,9 @@ import com.tech.chatgpt.exception.BaseException;
 import com.tech.chatgpt.exception.CommonError;
 import com.tech.chatgpt.function.KeyRandomStrategy;
 import com.tech.chatgpt.function.KeyStrategyFunction;
-import com.tech.chatgpt.interceptor.HeaderAuthorizationInterceptor;
+import com.tech.chatgpt.interceptor.DefaultOpenAiAuthInterceptor;
+import com.tech.chatgpt.interceptor.DynamicKeyOpenAiAuthInterceptor;
+import com.tech.chatgpt.interceptor.OpenAiAuthInterceptor;
 import com.tech.chatgpt.sse.ConsoleEventSourceListener;
 import io.reactivex.Single;
 import lombok.Getter;
@@ -72,6 +74,17 @@ public class OpenAiStreamClient {
     private OpenAiApi openAiApi;
 
     /**
+     * 自定义鉴权处理拦截器<br/>
+     * 可以不设置，默认实现：DefaultOpenAiAuthInterceptor <br/>
+     * 如需自定义实现参考：DealKeyWithOpenAiAuthInterceptor
+     *
+     * @see DynamicKeyOpenAiAuthInterceptor
+     * @see DefaultOpenAiAuthInterceptor
+     */
+    @Getter
+    private OpenAiAuthInterceptor authInterceptor;
+
+    /**
      * 构造实例对象
      *
      * @param builder
@@ -92,13 +105,21 @@ public class OpenAiStreamClient {
         }
         keyStrategy = builder.keyStrategy;
 
+        if (Objects.isNull(builder.authInterceptor)) {
+            builder.authInterceptor = new DefaultOpenAiAuthInterceptor();
+        }
+        authInterceptor = builder.authInterceptor;
+        //设置apiKeys和key的获取策略
+        authInterceptor.setApiKey(this.apiKey);
+        authInterceptor.setKeyStrategy(this.keyStrategy);
+
         if (Objects.isNull(builder.okHttpClient)) {
             builder.okHttpClient = this.okHttpClient();
         } else {
             //自定义的okhttpClient  需要增加api keys
             builder.okHttpClient = builder.okHttpClient
                     .newBuilder()
-                    .addInterceptor(new HeaderAuthorizationInterceptor(this.apiKey, this.keyStrategy))
+                    .addInterceptor(authInterceptor)
                     .build();
         }
         okHttpClient = builder.okHttpClient;
@@ -115,9 +136,14 @@ public class OpenAiStreamClient {
      * 创建默认的OkHttpClient
      */
     private OkHttpClient okHttpClient() {
+        if (Objects.isNull(this.authInterceptor)) {
+            this.authInterceptor = new DefaultOpenAiAuthInterceptor();
+        }
+        this.authInterceptor.setApiKey(this.apiKey);
+        this.authInterceptor.setKeyStrategy(this.keyStrategy);
         OkHttpClient okHttpClient = new OkHttpClient
                 .Builder()
-                .addInterceptor(new HeaderAuthorizationInterceptor(this.apiKey, this.keyStrategy))
+                .addInterceptor(this.authInterceptor)
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .writeTimeout(50, TimeUnit.SECONDS)
                 .readTimeout(50, TimeUnit.SECONDS)
@@ -280,9 +306,10 @@ public class OpenAiStreamClient {
     /**
      * 账户调用接口消耗金额信息查询
      * 最多查询100天
-     * @param starDate  开始时间
-     * @param endDate   结束时间
-     * @return
+     *
+     * @param starDate 开始时间
+     * @param endDate  结束时间
+     * @return  消耗金额信息
      */
     public BillingUsage billingUsage(@NotNull LocalDate starDate, @NotNull LocalDate endDate) {
         Single<BillingUsage> billingUsage = this.openAiApi.billingUsage(starDate, endDate);
@@ -292,7 +319,7 @@ public class OpenAiStreamClient {
     /**
      * 构造
      *
-     * @return
+     * @return Builder
      */
     public static OpenAiStreamClient.Builder builder() {
         return new OpenAiStreamClient.Builder();
@@ -318,6 +345,10 @@ public class OpenAiStreamClient {
          */
         private KeyStrategyFunction keyStrategy;
 
+        /**
+         * 自定义鉴权拦截器
+         */
+        private OpenAiAuthInterceptor authInterceptor;
 
         public Builder() {
         }
@@ -344,6 +375,11 @@ public class OpenAiStreamClient {
 
         public Builder okHttpClient(OkHttpClient val) {
             okHttpClient = val;
+            return this;
+        }
+
+        public Builder authInterceptor(DynamicKeyOpenAiAuthInterceptor val) {
+            authInterceptor = val;
             return this;
         }
 

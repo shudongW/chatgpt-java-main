@@ -54,6 +54,7 @@ import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -218,14 +219,13 @@ public class AzureOpenAIClient {
 //            if (Objects.nonNull(response.body())) {
 //                completions = JSONUtil.toBean(response.body().string(), ChatCompletionResponse.class);
 //            }
-            return completions;
 
         } catch (JsonProcessingException e) {
             log.error("请求参数解析异常：{}", e);
-            e.printStackTrace();
+            throw new BaseException("请求参数解析异常：" + CommonError.RETRY_ERROR.msg());
         } catch (Exception e) {
-            log.error("请求参数解析异常：{}", e);
-            e.printStackTrace();
+            log.error("chatCompletion error: {}", e.getMessage());
+            throw new BaseException(CommonError.OPENAI_SERVER_ERROR.msg());
         }
         return completions;
     }

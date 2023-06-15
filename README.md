@@ -30,10 +30,18 @@ WebSocket参考：[SocketIOListener](https://github.com/shudongW/chatgpt-steam-s
 <img width="210" height="300" alt="二维码" src="https://raw.githubusercontent.com/shudongW/myself_img/main/gzh.jpg"> | <img width="210" height="300" alt="二维码" src="https://raw.githubusercontent.com/shudongW/myself_img/main/me.png"> | <img width="310" height="210" alt="二维码" src="https://raw.githubusercontent.com/shudongW/myself_img/main/xt.jpg">
 ---
 ## 更新日志
-- [x] 1.0.8   支持所有的OpenAI官方接口
+
+
+- [x] 1.0.14  坐标version：1.0.14-beta1，后续会更新正式版。升级支持最新版Gpt-3.5—0614、Gpt-4.0—0614等模型, 支持function-calling完整使用案例参考：[OpenAiClientFunctionTest](https://github.com/shudongW/chatgpt-java-main/blob/main/src/test/java/com/tech/chatgpt/OpenAiClientFunctionTest.java)
+- [x] 1.0.14  ，支持function-calling
+- [x] 1.0.14  支持当key异常（失效、过期、封禁）时，自定义动态处理key，参考实现[DynamicKeyOpenAiAuthInterceptor](https://github.com/shudongW/chatgpt-java-main/blob/main/src/test/java/com/tech/chatgpt/interceptor/DynamicKeyOpenAiAuthInterceptor.java) ，支持key异常时的告警处理（钉钉、飞书、email、企业微信等等需要自定义开发）
+  
 - [x] 1.0.13   支持Azure OpenAI官方接口
-- 
-Q | A
+- [x] 1.0.8   支持所有的OpenAI官方接口
+
+本项目支持**默认输出**和**流式输出**。完整SDK测试案例参考：
+
+例Q | A
 ---|---
 如何整合SpringBoot实现流式输出的Api接口？ | 参考另外一个项目：[chatgpt-steam-server](https://github.com/shudongW/chatgpt-steam-server)
 最新版GPT-3.5-TURBO是否支持？ |参考测试案例：[OpenAiStreamClientTest](https://github.com/shudongW/chatgpt-java-main/blob/main/src/test/java/com/tech/chatgpt/OpenAiStreamClientTest.java) 

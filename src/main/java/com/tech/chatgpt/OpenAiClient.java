@@ -37,8 +37,9 @@ import com.tech.chatgpt.exception.BaseException;
 import com.tech.chatgpt.exception.CommonError;
 import com.tech.chatgpt.function.KeyRandomStrategy;
 import com.tech.chatgpt.function.KeyStrategyFunction;
-import com.tech.chatgpt.interceptor.HeaderAuthorizationInterceptor;
-import com.tech.chatgpt.interceptor.OpenAiResponseInterceptor;
+import com.tech.chatgpt.interceptor.DefaultOpenAiAuthInterceptor;
+import com.tech.chatgpt.interceptor.DynamicKeyOpenAiAuthInterceptor;
+import com.tech.chatgpt.interceptor.OpenAiAuthInterceptor;
 import io.reactivex.Single;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -87,9 +88,20 @@ public class OpenAiClient {
     private KeyStrategyFunction<List<String>, String> keyStrategy;
 
     /**
+     * 自定义鉴权处理拦截器<br/>
+     * 可以不设置，默认实现：DefaultOpenAiAuthInterceptor <br/>
+     * 如需自定义实现参考：DealKeyWithOpenAiAuthInterceptor
+     *
+     * @see DynamicKeyOpenAiAuthInterceptor
+     * @see DefaultOpenAiAuthInterceptor
+     */
+    @Getter
+    private OpenAiAuthInterceptor authInterceptor;
+
+    /**
      * 构造器
      *
-     * @return
+     * @return OpenAiClient.Builder
      */
     public static OpenAiClient.Builder builder() {
         return new OpenAiClient.Builder();
@@ -116,6 +128,12 @@ public class OpenAiClient {
         }
         keyStrategy = builder.keyStrategy;
 
+        if (Objects.isNull(builder.authInterceptor)) {
+            builder.authInterceptor = new DefaultOpenAiAuthInterceptor();
+        }
+        authInterceptor = builder.authInterceptor;
+        authInterceptor.setApiKey(this.apiKey);
+        authInterceptor.setKeyStrategy(this.keyStrategy);
 
         if (Objects.isNull(builder.okHttpClient)) {
             builder.okHttpClient = this.okHttpClient();
@@ -123,7 +141,7 @@ public class OpenAiClient {
             //自定义的okhttpClient  需要增加api keys
             builder.okHttpClient = builder.okHttpClient
                     .newBuilder()
-                    .addInterceptor(new HeaderAuthorizationInterceptor(this.apiKey, this.keyStrategy))
+                    .addInterceptor(authInterceptor)
                     .build();
         }
         okHttpClient = builder.okHttpClient;
@@ -142,10 +160,14 @@ public class OpenAiClient {
      * @return
      */
     private OkHttpClient okHttpClient() {
+        if (Objects.isNull(this.authInterceptor)) {
+            this.authInterceptor = new DefaultOpenAiAuthInterceptor();
+        }
+        this.authInterceptor.setApiKey(this.apiKey);
+        this.authInterceptor.setKeyStrategy(this.keyStrategy);
         OkHttpClient okHttpClient = new OkHttpClient
                 .Builder()
-                .addInterceptor(new HeaderAuthorizationInterceptor(this.apiKey,this.keyStrategy))
-                .addInterceptor(new OpenAiResponseInterceptor())
+                .addInterceptor(this.authInterceptor)
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS).build();
@@ -801,6 +823,11 @@ public class OpenAiClient {
          */
         private KeyStrategyFunction keyStrategy;
 
+        /**
+         * 自定义鉴权拦截器
+         */
+        private OpenAiAuthInterceptor authInterceptor;
+
         public Builder() {
         }
 
@@ -826,6 +853,11 @@ public class OpenAiClient {
 
         public Builder okHttpClient(OkHttpClient val) {
             okHttpClient = val;
+            return this;
+        }
+
+        public Builder authInterceptor(DynamicKeyOpenAiAuthInterceptor val) {
+            authInterceptor = val;
             return this;
         }
 
