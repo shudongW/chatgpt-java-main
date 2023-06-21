@@ -17,7 +17,7 @@ OpenAi官方文档地址：https://platform.openai.com/docs/api-reference
 
 **国内访问可以看下这个解决方案**：https://github.com/noobnooc/noobnooc/discussions/9
 
-### 整合Spring Boot 实现CahtGPT对话模式，思路可以参考：https://github.com/shudongW/chatgpt-java-main
+### 整合Spring Boot 实现CahtGPT对话模式，思路可以参考：https://github.com/shudongW/chatgpt-steam-server
 此项目支持两种流式输出有完整示例代码可参考 。
 
 流式输出实现方式 | 小程序 | 安卓 | ios | H5   
