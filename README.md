@@ -66,7 +66,7 @@ OpenAi官方文档地址：https://platform.openai.com/docs/api-reference
 ## 1、导入pom依赖
 ```
 <dependency>
-    <groupId>com.tect</groupId>
+    <groupId>com.tech</groupId>
     <artifactId>chatgpt-java-main</artifactId>
     <version>1.0.13</version>
 </dependency>

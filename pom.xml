@@ -3,17 +3,17 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.tect</groupId>
+    <groupId>com.tech</groupId>
     <artifactId>chatgpt-java-main</artifactId>
     <version>1.0.14</version>
     <name>chatgpt-java-main</name>
     <description>OpenAI Java SDK, OpenAI Api for Java. ChatGPT Java SDK .</description>
     <developers>
         <developer>
-            <name>tect</name>
+            <name>tech</name>
             <email>178200623@qq.com</email>
-            <organization>tect</organization>
-            <organizationUrl>https://www.tect.com</organizationUrl>
+            <organization>tech</organization>
+            <organizationUrl>https://www.tech.com</organizationUrl>
             <roles>
                 <role>Developer</role>
             </roles>
