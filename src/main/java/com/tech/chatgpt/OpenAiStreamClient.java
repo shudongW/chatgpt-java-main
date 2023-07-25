@@ -175,7 +175,7 @@ public class OpenAiStreamClient {
             ObjectMapper mapper = new ObjectMapper();
             String requestBody = mapper.writeValueAsString(completion);
             Request request = new Request.Builder()
-                    .url(this.apiHost + "v1/completions")
+                    .url(this.apiHost + "v1/chat/completions")
                     .post(RequestBody.create(MediaType.parse(ContentType.JSON.getValue()), requestBody))
                     .build();
             //创建事件
