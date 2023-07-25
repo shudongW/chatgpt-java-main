@@ -28,7 +28,7 @@ public class ChatCompletion implements Serializable {
 
     @NonNull
     @Builder.Default
-    private String model = Model.GPT_3_5_TURBO.getName();
+    private String model = Model.GPT_3_5_TURBO_16K_0613.getName();
     /**
      * 问题描述
      */

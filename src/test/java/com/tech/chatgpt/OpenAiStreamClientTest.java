@@ -47,7 +47,7 @@ public class OpenAiStreamClientTest {
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
         client = OpenAiStreamClient.builder()
-                .apiKey(Arrays.asList("sk-***********","sk-*********"))
+                .apiKey(Arrays.asList("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","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"))
                 //自定义key的获取策略：默认KeyRandomStrategy
 //                .keyStrategy(new KeyRandomStrategy())
                 .keyStrategy(new FirstKeyStrategy())
@@ -86,7 +86,7 @@ public class OpenAiStreamClientTest {
         Message message = Message.builder().role(Message.Role.USER).content("random one word！").build();
         ChatCompletion chatCompletion = ChatCompletion
                 .builder()
-                .model(ChatCompletion.Model.GPT_3_5_TURBO.getName())
+                .model(ChatCompletion.Model.GPT_3_5_TURBO_16K_0613.getName())
                 .temperature(0.2)
                 .maxTokens(2048)
                 .messages(Arrays.asList(message))
