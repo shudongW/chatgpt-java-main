@@ -67,7 +67,7 @@ public interface OpenAiApi {
      * @param completion
      * @return Single CompletionResponse
      */
-    @POST("v1/chat/completions")
+    @POST("v1/completions")
     Single<CompletionResponse> completions(@Body Completion completion);
 
     /**
