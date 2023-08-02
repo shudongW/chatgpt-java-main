@@ -1,4 +1,3 @@
-it’s an “unofficial" or "community-maintained” library.
 
 这是一个非官方的社区维护的库。
 OpenAi官方文档地址：https://platform.openai.com/docs/api-reference
