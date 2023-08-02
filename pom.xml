@@ -5,7 +5,7 @@
 
     <groupId>com.tech</groupId>
     <artifactId>chatgpt-java-main</artifactId>
-    <version>1.0.14</version>
+    <version>1.0.16</version>
     <name>chatgpt-java-main</name>
     <description>OpenAI Java SDK, OpenAI Api for Java. ChatGPT Java SDK .</description>
     <developers>
@@ -109,17 +109,26 @@
             <version>0.2.0</version>
         </dependency>
     </dependencies>
-
+<!--        aliyun-->
+<!--    <distributionManagement>-->
+<!--        <snapshotRepository>-->
+<!--            <id>unfbx</id> &lt;!&ndash; 此处id与setting.xml中的服务id保持一致 &ndash;&gt;-->
+<!--            <name>oss Snapshots Repository</name>-->
+<!--            <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>-->
+<!--        </snapshotRepository>-->
+<!--        <repository>-->
+<!--            <id>unfbx</id> &lt;!&ndash; 此处id与setting.xml中的服务id保持一致 &ndash;&gt;-->
+<!--            <name>oss Staging Repository</name>-->
+<!--            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>-->
+<!--        </repository>-->
+<!--    </distributionManagement>-->
+<!--    coding-->
     <distributionManagement>
-        <snapshotRepository>
-            <id>unfbx</id> <!-- 此处id与setting.xml中的服务id保持一致 -->
-            <name>oss Snapshots Repository</name>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
-        </snapshotRepository>
         <repository>
-            <id>unfbx</id> <!-- 此处id与setting.xml中的服务id保持一致 -->
-            <name>oss Staging Repository</name>
-            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+            <!--必须与 settings.xml 的 id 一致-->
+            <id>alight-aserver_java-java</id>
+            <name>java</name>
+            <url>https://alight-maven.pkg.coding.net/repository/aserver_java/java/</url>
         </repository>
     </distributionManagement>
     <profiles>

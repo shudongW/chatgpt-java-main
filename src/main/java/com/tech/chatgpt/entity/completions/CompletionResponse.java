@@ -1,5 +1,6 @@
 package com.tech.chatgpt.entity.completions;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.tech.chatgpt.entity.common.OpenAiResponse;
 import com.tech.chatgpt.entity.common.Choice;
 import com.tech.chatgpt.entity.common.Usage;
